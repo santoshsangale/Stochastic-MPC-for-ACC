@@ -66,6 +66,13 @@ elseif rel_dist<=sensor_range % Condition to switch to distance control
     h_min = 2;
     h_max = 4;
     d_min = 3; % Minimum distance at standstill
+    %Stochastic Parameters
+    alpha = 0.05; %Risk probability
+    quantile = norminv(1-alpha/2); %inverse of the standard normal cumulative distribution function evaluated at the probability value 1-alpha
+    if alpha == 0
+    quantile = 0; %deterministic case
+    end
+
     
     % A matrix
     A=[1 0; -T_s 1];
@@ -168,39 +175,31 @@ E_rest=[0 0; 0 0; 0 0; 0 -1; -1 0; 1 0; m_eq 0; -m_eq 0; -m_eq 0];
 
 
 num_var=2;
-alpha_min=0.06;
-alpha_max=0.05;
+%alpha_min=0.06;
+%alpha_max=0.05;
 
-sig=0.5/3.6;
+%sig=0.5/3.6;
 %additional term for chance constraint G_k*d_k
    
 %d_k=zeros(N*num_var,1);
 %d_k(1:num_var:end-1)=%var_rel_dist(1:2:end-1).^0.5;
+    
+%sig_km=sqrt(var_vp); %km/hr
+%sig=sig_km/3.6; %m/s
 
-d_k=zeros(2*N,2);
-sigma_x=cov_x(N,sig);
-d_k(1:2,1:2)=sigma_x(:,:,1);
-d_k(3:4,1:2)=sigma_x(:,:,2);
-d_k(5:6,1:2)=sigma_x(:,:,3);
-d_k(7:8,1:2)=sigma_x(:,:,4);
-d_k(9:10,1:2)=sigma_x(:,:,5);
-d_k(11:12,1:2)=sigma_x(:,:,6);
-d_k(13:14,1:2)=sigma_x(:,:,7);
-d_k(15:16,1:2)=sigma_x(:,:,8);
-d_k(17:18,1:2)=sigma_x(:,:,9);
-d_k(19:20,1:2)=sigma_x(:,:,10);
-d_k(21:22,1:2)=sigma_x(:,:,11);
-d_k(23:24,1:2)=sigma_x(:,:,12);
-d_k(25:26,1:2)=sigma_x(:,:,13);
-d_k(27:28,1:2)=sigma_x(:,:,14);
-d_k(29:30,1:2)=sigma_x(:,:,15);
-d_k(31:32,1:2)=sigma_x(:,:,16);
-d_k(33:34,1:2)=sigma_x(:,:,17);
-d_k(35:36,1:2)=sigma_x(:,:,18);
-d_k(37:38,1:2)=sigma_x(:,:,19);
-d_k(39:40,1:2)=sigma_x(:,:,20);
+sig_vp=[0.2236:0.2236: 4.4720]; %speed km/hr
+sig_vp_ms=sig_vp./3.6;
+sigma_x=cov_x(N,sig_vp_ms);
+d_kk=zeros(2*N,2);
+for r=1:N
+    d_kk(2*r-1:2*r,:)=sigma_x(:,:,r);
+end
+d_k=zeros(2*N,1);
+d_k(1:2:end-1)=d_kk((2:2:end),2).^(1/2);
 
-G_i=[0 0;0 0;norminv(1-alpha_min) 0;norminv(1-alpha_max) 0;0 0;0 0;0 0;0 0;0 0];    %alpha_min and alpha_max are constant 
+
+%G_i=[0 0;0 0;norminv(1-alpha_min/2) 0;norminv(1-alpha_max/2) 0;0 0;0 0;0 0;0 0;0 0];    %alpha_min and alpha_max are constant 
+G_i=[0 0;0 0;quantile 0;quantile 0;0 0;0 0;0 0;0 0;0 0]; 
 
 B_1=[-a_min; a_max; p4-c_r*m_eq*g*cos(theta(1))-p0*p2-m_eq*g*sin(theta(1));...
     c_r*m_eq*g*cos(theta(1))+p0*p2+m_eq*g*sin(theta(1))-F_hydr_max; p4+c_r*m_eq*g*cos(theta(1))+p0*p2+m_eq*g*sin(theta(1))];
